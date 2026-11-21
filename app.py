@@ -1,6 +1,6 @@
 import streamlit as st
 from supabase import create_client
-from datetime import datetime
+from datetime import datetime, date, time
 
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
@@ -12,81 +12,53 @@ def get_supabase():
 supabase = get_supabase()
 
 st.set_page_config(page_title="Ménage", page_icon="🏠", layout="wide")
+st.title("🏠 Ménage")
 
-# ==========================================
-# CSS POUR FORCER L'AFFICHAGE HORIZONTAL SUR MOBILE
-# ==========================================
 st.markdown("""
 <style>
-@media (max-width: 768px) {
-    /* Force toutes les lignes de colonnes à rester horizontales */
-    [data-testid="stHorizontalBlock"] {
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        gap: 4px !important;
-    }
-    [data-testid="column"] {
-        min-width: 0 !important;
-        width: auto !important;
-        flex: 1 1 auto !important;
-    }
-    /* Compacte les selectbox */
-    [data-testid="stSelectbox"] > div > div {
-        min-height: 32px !important;
-        padding: 2px 6px !important;
-    }
-    [data-testid="stSelectbox"] input, [data-testid="stSelectbox"] div[data-baseweb="select"] {
-        font-size: 13px !important;
-    }
-    /* Compacte les boutons */
-    [data-testid="stButton"] > button {
-        min-height: 32px !important;
-        padding: 2px 8px !important;
-        font-size: 14px !important;
-        white-space: nowrap !important;
-    }
-    /* Texte tronqué avec ... si trop long */
-    .task-name {
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        font-size: 14px !important;
-        line-height: 1.3 !important;
-    }
-    /* Réduit les espacements verticaux */
-    .block-container {
-        padding-top: 0.5rem !important;
-    }
-    [data-testid="stExpander"] {
-        margin-top: 0 !important;
-        margin-bottom: 0.2rem !important;
-    }
-    hr {
-        margin: 0.3rem 0 !important;
-    }
+/* Empêcher les colonnes de s'empiler sur mobile */
+[data-testid="stHorizontalBlock"] {
+    flex-wrap: nowrap !important;
+    gap: 0.4rem !important;
+    align-items: center !important;
+}
+[data-testid="stColumn"], [data-testid="column"] {
+    min-width: 0 !important;
+}
+/* Réduire les marges verticales entre les tâches */
+.block-container { padding-top: 1rem !important; }
+[data-testid="stVerticalBlock"] { gap: 0.3rem !important; }
+/* Boutons et selectbox plus compacts */
+.stButton button, [data-testid="stPopover"] button {
+    padding: 0.2rem 0.5rem !important;
+    min-height: 0 !important;
+}
+div[data-baseweb="select"] > div {
+    min-height: 0 !important;
+    padding: 0 !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🏠 Ménage")
-
-# Ordre : À faire > Historique > Créer > Gérer
+# Ordre : À faire > Historique > Créer > Gestion
 tab_a_faire, tab_historique, tab_creer, tab_gestion = st.tabs([
     "📋 À faire", "📜 Historique", "➕ Créer", "⚙️ Gérer"
 ])
 
 # ==========================================
-# ONGLET 1 : À FAIRE (1 LIGNE PAR TÂCHE)
+# ONGLET 1 : À FAIRE (ULTRA COMPACT)
 # ==========================================
 with tab_a_faire:
     taches = supabase.table("taches").select("*").execute().data
     executions = supabase.table("executions").select("*").order("date_execution", desc=True).execute().data
 
+    # Dernière exécution par tâche
     derniere_exec = {}
     for e in executions:
         if e["tache_id"] not in derniere_exec:
             derniere_exec[e["tache_id"]] = e
 
+    # Calcul tri
     liste = []
     maintenant = datetime.now()
     for t in taches:
@@ -109,36 +81,46 @@ with tab_a_faire:
         st.info("Aucune tâche. Va dans ➕ Créer.")
     else:
         for t in liste:
-            # Couleur et texte jours
             if t["retard"] > 0:
-                icone, txt, couleur = "🔴", f"+{t['retard']}j", "#ff4b4b"
+                icone, txt, couleur = "🔴", f"+{t['retard']}j", "#d33"
             elif t["retard"] == 0:
-                icone, txt, couleur = "🟡", "Auj", "#ff9500"
+                icone, txt, couleur = "🟡", "Auj.", "#c90"
             else:
-                icone, txt, couleur = "🟢", f"{-t['retard']}j", "#28a745"
+                icone, txt, couleur = "🟢", f"{-t['retard']}j", "gray"
 
-            # 4 colonnes sur UNE SEULE LIGNE : [icône] [nom+jours] [qui] [bouton]
-            # Ratios : icône fixe petit, nom large, select moyen, bouton petit
-            c1, c2, c3, c4 = st.columns([0.25, 3.5, 1.3, 0.6])
+            c1, c2, c3, c4 = st.columns([0.7, 4, 1.4, 0.9])
 
+            # Pastille = bouton qui ouvre les détails
             with c1:
-                st.markdown(f"<div style='font-size:1em; text-align:center; line-height:1;'>{icone}</div>",
-                          unsafe_allow_html=True)
+                with st.popover(icone):
+                    st.write(f"**{t['nom']}**")
+                    st.write(f"Fréquence : tous les {t['freq']} j")
+                    st.write(f"Priorité : {t['prio']}/5")
+                    if t["qui"]:
+                        st.write(f"Dernière fois : {t['date'].strftime('%d/%m')} par {t['qui']}")
+                    else:
+                        st.write(f"Jamais faite (créée le {t['date'].strftime('%d/%m')})")
 
+            # Nom + jours
             with c2:
-                # Nom avec classe task-name pour l'ellipsis + jours restants en couleur
                 st.markdown(
-                    f"<div class='task-name'><b>{t['nom']}</b> "
-                    f"<span style='color:{couleur}; font-size:0.85em; white-space:nowrap;'> {txt}</span></div>",
+                    f"<div style='font-size:0.95em;line-height:1.2'>"
+                    f"<b>{t['nom']}</b> <span style='color:{couleur};font-size:0.85em'>{txt}</span>"
+                    f"</div>",
                     unsafe_allow_html=True
                 )
 
+            # Qui (affiché T / G)
             with c3:
-                qui = st.selectbox("Qui", ["Tifenn", "Gaël"], key=f"q{t['id']}",
-                                 label_visibility="collapsed")
+                qui = st.selectbox(
+                    "Qui", ["Tifenn", "Gaël"], key=f"q{t['id']}",
+                    format_func=lambda x: x[0],
+                    label_visibility="collapsed"
+                )
 
+            # Bouton fait
             with c4:
-                if st.button("✓", key=f"b{t['id']}", help="C'est fait !"):
+                if st.button("✓", key=f"b{t['id']}"):
                     supabase.table("executions").insert({
                         "tache_id": t["id"],
                         "personne": qui,
@@ -146,35 +128,25 @@ with tab_a_faire:
                     }).execute()
                     st.rerun()
 
-            # Détails cachés (cliquer pour voir fréquence et dernière fois)
-            with st.expander("ℹ️", expanded=False):
-                col_a, col_b = st.columns(2)
-                col_a.caption(f"Tous les {t['freq']}j • Prio {t['prio']}/5")
-                if t["qui"]:
-                    col_b.caption(f"Dernière : {t['date'].strftime('%d/%m')} par {t['qui']}")
-                else:
-                    col_b.caption(f"Jamais faite (créée {t['date'].strftime('%d/%m')})")
-
-            st.divider()
-
 # ==========================================
 # ONGLET 2 : HISTORIQUE (MODIFIABLE)
 # ==========================================
 with tab_historique:
     st.header("📜 Historique")
 
+    # Récupérer avec jointure
     histo = supabase.table("executions").select("*, taches(nom)").order("date_execution", desc=True).execute().data
 
     if not histo:
         st.info("Vide pour l'instant.")
     else:
-        filtre = st.radio("Filtrer :", ["Tous", "Tifenn", "Gaël"], horizontal=True)
+        filtre = st.radio("Filtrer:", ["Tous", "Tifenn", "Gaël"], horizontal=True)
         if filtre != "Tous":
             histo = [e for e in histo if e["personne"] == filtre]
 
         for e in histo:
             d = datetime.fromisoformat(e["date_execution"].replace("Z", "+00:00"))
-            nom = e["taches"]["nom"] if e.get("taches") else "❓ Tâche supprimée"
+            nom = e["taches"]["nom"] if e.get("taches") else "❓"
             label = f"{d.strftime('%d/%m/%Y %H:%M')} — {nom} — {e['personne']}"
 
             with st.expander(label):
@@ -197,6 +169,7 @@ with tab_historique:
                         st.success("Modifié !")
                         st.rerun()
 
+                # Bouton supprimer l'entrée d'historique
                 if st.button("🗑️ Supprimer cette entrée", key=f"del_{e['id']}"):
                     supabase.table("executions").delete().eq("id", e["id"]).execute()
                     st.rerun()
@@ -206,11 +179,11 @@ with tab_historique:
 # ==========================================
 with tab_creer:
     with st.form("new", clear_on_submit=True):
-        nom = st.text_input("Nom de la tâche", placeholder="Aspirateur salon...")
+        nom = st.text_input("Nom", placeholder="Aspirateur...")
         c1, c2 = st.columns(2)
         freq = c1.number_input("Tous les X jours", 1, 365, 7)
         prio = c2.slider("Priorité", 1, 5, 3)
-        if st.form_submit_button("➕ Ajouter"):
+        if st.form_submit_button("Ajouter"):
             if nom.strip():
                 supabase.table("taches").insert({
                     "nom": nom.strip(),
@@ -219,8 +192,6 @@ with tab_creer:
                 }).execute()
                 st.success("Ajouté !")
                 st.rerun()
-            else:
-                st.error("Donne un nom !")
 
 # ==========================================
 # ONGLET 4 : GÉRER
@@ -236,7 +207,7 @@ with tab_gestion:
                 c1, c2 = st.columns(2)
                 f = c1.number_input("Jours", 1, 365, t["frequence_jours"])
                 p = c2.slider("Prio", 1, 5, t["priorite"])
-                if st.form_submit_button("💾 Enregistrer"):
+                if st.form_submit_button("Enregistrer"):
                     supabase.table("taches").update({
                         "nom": n, "frequence_jours": int(f), "priorite": int(p)
                     }).eq("id", t["id"]).execute()
