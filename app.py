@@ -2,7 +2,6 @@ import streamlit as st
 from supabase import create_client
 from datetime import datetime
 
-# Configuration
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
@@ -16,106 +15,135 @@ st.set_page_config(page_title="Ménage Tifenn & Gaël", page_icon="🏠", layout
 st.title("🏠 Suivi des tâches de ménage")
 
 # ==========================================
-# ONGLETS DANS L'ORDRE SOUHAITÉ
+# ORDRE DES ONGLETS : À faire > Historique > Créer > Gestion
 # ==========================================
-tab_a_faire, tab_creer, tab_gestion, tab_historique = st.tabs([
+tab_a_faire, tab_historique, tab_creer, tab_gestion = st.tabs([
     "📋 À faire",
+    "📜 Historique",
     "➕ Créer une tâche",
-    "⚙️ Gestion des tâches",
-    "📜 Historique"
+    "⚙️ Gestion des tâches"
 ])
 
 # ==========================================
-# ONGLET 1 : LISTE DES TÂCHES À FAIRE (EN PREMIER)
+# ONGLET 1 : À FAIRE (format compact)
 # ==========================================
 with tab_a_faire:
-    st.header("📋 Tâches à faire maintenant")
+    st.header("📋 Tâches à faire")
 
-    # Récupérer toutes les tâches
+    # Récupération des données
     taches = supabase.table("taches").select("*").execute().data
-
-    # Récupérer la dernière exécution de chaque tâche
     executions = supabase.table("executions").select("*").order("date_execution", desc=True).execute().data
 
-    # Créer un dict : tache_id -> dernière exécution
+    # Dernière exécution par tâche
     derniere_exec = {}
     for e in executions:
         if e["tache_id"] not in derniere_exec:
             derniere_exec[e["tache_id"]] = e
 
-    # Calculer le retard pour chaque tâche et trier
+    # Calcul et tri
     liste_triee = []
     maintenant = datetime.now()
 
     for t in taches:
         exec_info = derniere_exec.get(t["id"])
         if exec_info:
-            date_derniere = datetime.fromisoformat(exec_info["date_execution"].replace("Z", "+00:00")).replace(tzinfo=None)
-            jours_ecoules = (maintenant - date_derniere).days
+            date_ref = datetime.fromisoformat(exec_info["date_execution"].replace("Z", "+00:00")).replace(tzinfo=None)
             personne = exec_info["personne"]
         else:
-            # Jamais faite : on considère la date de création
-            date_derniere = datetime.fromisoformat(t["date_creation"].replace("Z", "+00:00")).replace(tzinfo=None)
-            jours_ecoules = (maintenant - date_derniere).days
+            date_ref = datetime.fromisoformat(t["date_creation"].replace("Z", "+00:00")).replace(tzinfo=None)
             personne = None
 
-        retard = jours_ecoules - t["frequence_jours"]  # > 0 = en retard
+        jours_ecoules = (maintenant - date_ref).days
+        retard = jours_ecoules - t["frequence_jours"]  # >0 = en retard
+
         liste_triee.append({
             "id": t["id"],
             "nom": t["nom"],
             "frequence": t["frequence_jours"],
             "priorite": t["priorite"],
             "retard": retard,
-            "jours_ecoules": jours_ecoules,
-            "personne": personne,
-            "date_ref": date_derniere
+            "date_ref": date_ref,
+            "personne": personne
         })
 
-    # Trier : d'abord par retard décroissant (plus en retard = plus haut), puis par priorité décroissante
+    # Tri : plus en retard d'abord, puis priorité haute
     liste_triee.sort(key=lambda x: (x["retard"], x["priorite"]), reverse=True)
 
     if not liste_triee:
-        st.info("Aucune tâche créée pour l'instant. Va dans l'onglet '➕ Créer une tâche' !")
+        st.info("Aucune tâche ! Crée-en une dans l'onglet '➕ Créer une tâche'.")
     else:
         for t in liste_triee:
-            # Couleur selon l'urgence
+            # Déterminer l'affichage des jours
             if t["retard"] > 0:
                 couleur = "🔴"
-                statut = f"En retard de {t['retard']} jour(s) !"
+                texte_jours = f"En retard de {t['retard']} j"
             elif t["retard"] == 0:
                 couleur = "🟡"
-                statut = "À faire aujourd'hui"
+                texte_jours = "À faire aujourd'hui"
             else:
                 couleur = "🟢"
-                statut = f"Dans {-t['retard']} jour(s)"
+                texte_jours = f"Dans {-t['retard']} j"
 
-            col_info, col_action = st.columns([3, 2])
+            # === LIGNE COMPACTE (toujours visible) ===
+            col_couleur, col_nom, col_qui, col_btn = st.columns([0.4, 3, 1.5, 1.5])
 
-            with col_info:
-                st.markdown(f"### {couleur} {t['nom']} — Priorité {t['priorite']}/5")
-                st.write(f"Fréquence : tous les {t['frequence']} jours")
-                st.markdown(f"<span style='color:gray'>{statut}</span>", unsafe_allow_html=True)
-                if t["personne"]:
-                    st.caption(f"Dernière fois : le {t['date_ref'].strftime('%d/%m/%Y')} par {t['personne']}")
-                else:
-                    st.caption(f"Jamais faite (créée le {t['date_ref'].strftime('%d/%m/%Y')})")
+            with col_couleur:
+                st.markdown(f"### {couleur}")
 
-            with col_action:
-                with st.form(key=f"form_faite_{t['id']}"):
-                    qui = st.selectbox("Qui l'a faite ?", ["Tifenn", "Gaël"], key=f"qui_{t['id']}")
-                    if st.form_submit_button("✅ C'est fait !", use_container_width=True):
-                        supabase.table("executions").insert({
-                            "tache_id": t["id"],
-                            "personne": qui,
-                            "date_execution": datetime.now().isoformat()
-                        }).execute()
-                        st.success("Enregistré !")
-                        st.rerun()
+            with col_nom:
+                st.markdown(f"**{t['nom']}**")
+                st.caption(texte_jours)
+
+            with col_qui:
+                qui = st.selectbox("Qui ?", ["Tifenn", "Gaël"], key=f"qui_{t['id']}")
+
+            with col_btn:
+                st.write("")  # petit espacement vertical
+                if st.button("✅ C'est fait", key=f"btn_{t['id']}", use_container_width=True):
+                    supabase.table("executions").insert({
+                        "tache_id": t["id"],
+                        "personne": qui,
+                        "date_execution": datetime.now().isoformat()
+                    }).execute()
+                    st.success(f"'{t['nom']}' marquée comme faite par {qui} !")
+                    st.rerun()
+
+            # === DÉTAILS DÉROULANTS ===
+            with st.expander("ℹ️ Voir détails (fréquence, dernière fois...)"):
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.write(f"**Fréquence :** tous les {t['frequence']} jours")
+                    st.write(f"**Priorité :** {t['priorite']}/5")
+                with c2:
+                    if t["personne"]:
+                        st.write(f"**Dernière fois :** {t['date_ref'].strftime('%d/%m/%Y')} par **{t['personne']}**")
+                    else:
+                        st.write(f"**Jamais faite** (créée le {t['date_ref'].strftime('%d/%m/%Y')})")
 
             st.divider()
 
 # ==========================================
-# ONGLET 2 : CRÉATION DE TÂCHE
+# ONGLET 2 : HISTORIQUE
+# ==========================================
+with tab_historique:
+    st.header("📜 Historique des tâches effectuées")
+
+    histo = supabase.table("executions").select("*, taches(nom)").order("date_execution", desc=True).execute().data
+
+    if not histo:
+        st.info("Rien dans l'historique pour l'instant.")
+    else:
+        filtre = st.selectbox("Filtrer par personne :", ["Tout le monde", "Tifenn", "Gaël"])
+        if filtre != "Tout le monde":
+            histo = [e for e in histo if e["personne"] == filtre]
+
+        for e in histo:
+            date_e = datetime.fromisoformat(e["date_execution"].replace("Z", "+00:00"))
+            nom_tache = e["taches"]["nom"] if e.get("taches") else "❓ Tâche supprimée"
+            st.write(f"• **{nom_tache}** — {date_e.strftime('%d/%m/%Y à %H:%M')} par **{e['personne']}**")
+
+# ==========================================
+# ONGLET 3 : CRÉER UNE TÂCHE
 # ==========================================
 with tab_creer:
     st.header("➕ Nouvelle tâche")
@@ -125,7 +153,7 @@ with tab_creer:
         with col1:
             frequence = st.number_input("Tous les combien de jours ?", min_value=1, value=7, step=1)
         with col2:
-            priorite = st.slider("Priorité (1 = basse, 5 = haute)", 1, 5, 3)
+            priorite = st.slider("Priorité (1=basse, 5=haute)", 1, 5, 3)
 
         if st.form_submit_button("✅ Ajouter la tâche", use_container_width=True):
             if nom.strip():
@@ -140,7 +168,7 @@ with tab_creer:
                 st.error("Donne un nom à la tâche !")
 
 # ==========================================
-# ONGLET 3 : GESTION DES TÂCHES (MODIFIER / SUPPRIMER)
+# ONGLET 4 : GESTION (modifier/supprimer)
 # ==========================================
 with tab_gestion:
     st.header("⚙️ Gestion des tâches existantes")
@@ -148,57 +176,30 @@ with tab_gestion:
     taches = supabase.table("taches").select("*").order("date_creation", desc=True).execute().data
 
     if not taches:
-        st.info("Aucune tâche à gérer. Crée-en une dans l'onglet '➕ Créer une tâche'.")
+        st.info("Aucune tâche à gérer.")
     else:
         for t in taches:
-            with st.expander(f"🔧 {t['nom']} (tous les {t['frequence_jours']} jours, priorité {t['priorite']}/5)"):
-                col_modif, col_suppr = st.columns([4, 1])
+            with st.expander(f"🔧 {t['nom']} (tous les {t['frequence_jours']} j, prio {t['priorite']}/5)"):
+                # Formulaire de modification
+                with st.form(key=f"modif_{t['id']}"):
+                    nouveau_nom = st.text_input("Nom", value=t["nom"])
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        nouvelle_freq = st.number_input("Fréquence (jours)", min_value=1, value=t["frequence_jours"], step=1, key=f"freq_{t['id']}")
+                    with c2:
+                        nouvelle_prio = st.slider("Priorité", 1, 5, t["priorite"], key=f"prio_{t['id']}")
 
-                with col_modif:
-                    with st.form(key=f"modif_{t['id']}"):
-                        nouveau_nom = st.text_input("Nom", value=t["nom"])
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            nouvelle_freq = st.number_input("Fréquence (jours)", min_value=1, value=t["frequence_jours"], step=1, key=f"freq_{t['id']}")
-                        with c2:
-                            nouvelle_prio = st.slider("Priorité", 1, 5, t["priorite"], key=f"prio_{t['id']}")
-
-                        if st.form_submit_button("💾 Enregistrer les modifications"):
-                            supabase.table("taches").update({
-                                "nom": nouveau_nom.strip(),
-                                "frequence_jours": int(nouvelle_freq),
-                                "priorite": int(nouvelle_prio)
-                            }).eq("id", t["id"]).execute()
-                            st.success("Tâche modifiée !")
-                            st.rerun()
-
-                with col_suppr:
-                    st.write("")  # espacement
-                    st.write("")
-                    if st.button("🗑️ Supprimer", key=f"suppr_{t['id']}", type="primary"):
-                        # Supprimer la tâche (les exécutions seront supprimées automatiquement grâce au ON DELETE CASCADE)
-                        supabase.table("taches").delete().eq("id", t["id"]).execute()
-                        st.success(f"Tâche '{t['nom']}' supprimée !")
+                    if st.form_submit_button("💾 Enregistrer les modifications"):
+                        supabase.table("taches").update({
+                            "nom": nouveau_nom.strip(),
+                            "frequence_jours": int(nouvelle_freq),
+                            "priorite": int(nouvelle_prio)
+                        }).eq("id", t["id"]).execute()
+                        st.success("Tâche modifiée !")
                         st.rerun()
 
-# ==========================================
-# ONGLET 4 : HISTORIQUE
-# ==========================================
-with tab_historique:
-    st.header("📜 Historique des tâches effectuées")
-
-    # Jointure pour avoir le nom de la tâche
-    histo = supabase.table("executions").select("*, taches(nom)").order("date_execution", desc=True).execute().data
-
-    if not histo:
-        st.info("Rien dans l'historique pour l'instant.")
-    else:
-        # Optionnel : filtre par personne
-        filtre = st.selectbox("Filtrer par personne :", ["Tout le monde", "Tifenn", "Gaël"])
-        if filtre != "Tout le monde":
-            histo = [e for e in histo if e["personne"] == filtre]
-
-        for e in histo:
-            date_e = datetime.fromisoformat(e["date_execution"].replace("Z", "+00:00"))
-            nom_tache = e["taches"]["nom"] if e.get("taches") else "❓ Tâche supprimée"
-            st.write(f"• **{nom_tache}** — {date_e.strftime('%d/%m/%Y à %H:%M')} par **{e['personne']}**")
+                # Bouton suppression
+                if st.button("🗑️ Supprimer définitivement", key=f"suppr_{t['id']}", type="primary"):
+                    supabase.table("taches").delete().eq("id", t["id"]).execute()
+                    st.success(f"Tâche '{t['nom']}' supprimée !")
+                    st.rerun()
