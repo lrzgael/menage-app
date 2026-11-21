@@ -88,30 +88,21 @@ with tab_a_faire:
             else:
                 icone, txt, couleur = "🟢", f"{-t['retard']}j", "gray"
 
-            c1, c2, c3, c4 = st.columns([0.7, 4, 1.4, 0.9])
+            # [pastille + nom + jours] [qui] [✓] [détails]
+            c1, c2, c3, c4 = st.columns([4.5, 1.4, 0.9, 0.9])
 
-            # Pastille = bouton qui ouvre les détails
+            # Pastille + nom + jours
             with c1:
-                with st.popover(icone):
-                    st.write(f"**{t['nom']}**")
-                    st.write(f"Fréquence : tous les {t['freq']} j")
-                    st.write(f"Priorité : {t['prio']}/5")
-                    if t["qui"]:
-                        st.write(f"Dernière fois : {t['date'].strftime('%d/%m')} par {t['qui']}")
-                    else:
-                        st.write(f"Jamais faite (créée le {t['date'].strftime('%d/%m')})")
-
-            # Nom + jours
-            with c2:
                 st.markdown(
                     f"<div style='font-size:0.95em;line-height:1.2'>"
-                    f"<b>{t['nom']}</b> <span style='color:{couleur};font-size:0.85em'>{txt}</span>"
+                    f"{icone} <b>{t['nom']}</b> "
+                    f"<span style='color:{couleur};font-size:0.85em'>{txt}</span>"
                     f"</div>",
                     unsafe_allow_html=True
                 )
 
             # Qui (affiché T / G)
-            with c3:
+            with c2:
                 qui = st.selectbox(
                     "Qui", ["Tifenn", "Gaël"], key=f"q{t['id']}",
                     format_func=lambda x: x[0],
@@ -119,7 +110,7 @@ with tab_a_faire:
                 )
 
             # Bouton fait
-            with c4:
+            with c3:
                 if st.button("✓", key=f"b{t['id']}"):
                     supabase.table("executions").insert({
                         "tache_id": t["id"],
@@ -128,6 +119,16 @@ with tab_a_faire:
                     }).execute()
                     st.rerun()
 
+            # Détails au bout de la ligne
+            with c4:
+                with st.popover("ℹ️"):
+                    st.write(f"**{t['nom']}**")
+                    st.write(f"Fréquence : tous les {t['freq']} j")
+                    st.write(f"Priorité : {t['prio']}/5")
+                    if t["qui"]:
+                        st.write(f"Dernière fois : {t['date'].strftime('%d/%m')} par {t['qui']}")
+                    else:
+                        st.write(f"Jamais faite (créée le {t['date'].strftime('%d/%m')})")
 # ==========================================
 # ONGLET 2 : HISTORIQUE (MODIFIABLE)
 # ==========================================
