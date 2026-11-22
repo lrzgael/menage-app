@@ -72,6 +72,22 @@ div[data-baseweb="select"] div {
 div[data-baseweb="select"] svg {
     width: 0.8rem !important;
 }
+
+/* Supprimer la marge sous le texte des tâches */
+[data-testid="stHorizontalBlock"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stHorizontalBlock"] [data-testid="stMarkdownContainer"] {
+    margin: 0 !important;
+}
+[data-testid="stHorizontalBlock"] [data-testid="stMarkdown"] {
+    margin-bottom: 0 !important;
+}
+
+/* Centrer le contenu de chaque colonne */
+[data-testid="stColumn"] > div,
+[data-testid="column"] > div {
+    justify-content: center !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -125,14 +141,15 @@ with tab_a_faire:
                 icone, txt, couleur = "🟢", f"{-t['retard']}j", "gray"
 
             # [pastille + nom + jours] [qui] [✓]
-            c1, c2, c3 = st.columns([2.6, 1.7, 1.4])
+            c1, c2, c3 = st.columns([2.6, 1.7, 1.4], vertical_alignment="center")
 
             with c1:
                 st.markdown(
-                    f"<div style='font-size:0.95em;line-height:2.4'>"
-                    f"{icone} <b>{t['nom']}</b> "
+                    f"<div style='display:flex;align-items:center;"
+                    f"min-height:2.4rem;font-size:0.95em;line-height:1.2'>"
+                    f"<span>{icone} <b>{t['nom']}</b> "
                     f"<span style='color:{couleur};font-size:0.85em'>{txt}</span>"
-                    f"</div>",
+                    f"</span></div>",
                     unsafe_allow_html=True
                 )
 
