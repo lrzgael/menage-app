@@ -34,15 +34,29 @@ st.markdown("""
 }
 [data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
 
-/* Bouton ✓ : plus grand et bien visible */
-.stButton button {
-    min-height: 3.5rem !important;
+
+
+/* Bouton ✓ : large, vert, bien visible */
+.stButton button[kind="primary"],
+.stButton button[data-testid="stBaseButton-primary"] {
+    min-height: 2.4rem !important;
     min-width: 0 !important;
     width: 100% !important;
     padding: 0.2rem !important;
-    font-size: 2rem !important;
+    font-size: 1.3rem !important;
     font-weight: bold !important;
+    background-color: #2e9e5b !important;
+    border: none !important;
+    color: white !important;
+    border-radius: 0.6rem !important;
 }
+.stButton button[kind="primary"]:hover,
+.stButton button[data-testid="stBaseButton-primary"]:hover {
+    background-color: #24804a !important;
+}
+.stButton button[kind="primary"]:active,
+.stButton button[data-testid="stBaseButton-primary"]:active {
+    background-color: #1b6338 !important;
 
 /* Menu Tifenn / Gaël : compact, texte toujours visible */
 div[data-baseweb="select"] > div {
@@ -111,7 +125,7 @@ with tab_a_faire:
                 icone, txt, couleur = "🟢", f"{-t['retard']}j", "gray"
 
             # [pastille + nom + jours] [qui] [✓]
-            c1, c2, c3 = st.columns([3, 1.7, 1])
+            c1, c2, c3 = st.columns([2.6, 1.7, 1.4])
 
             with c1:
                 st.markdown(
@@ -129,7 +143,7 @@ with tab_a_faire:
                 )
 
             with c3:
-                if st.button("✓", key=f"b{t['id']}"):
+                if st.button("✓", key=f"b{t['id']}", type="primary"):
                     supabase.table("executions").insert({
                         "tache_id": t["id"],
                         "personne": qui,
