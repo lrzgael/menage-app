@@ -2,6 +2,8 @@ import streamlit as st
 from supabase import create_client
 from datetime import datetime, date, time
 
+st.set_page_config(page_title="Ménage", page_icon="🏠", layout="wide")
+
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
@@ -11,7 +13,17 @@ def get_supabase():
 
 supabase = get_supabase()
 
-st.set_page_config(page_title="Ménage", page_icon="🏠", layout="wide")
+# Catégories dans l'ordre d'affichage
+CATEGORIES = ["Salon", "Salle de bains", "Chambre", "Bureau", "Jardin", "Autres"]
+ICONES_CAT = {
+    "Salon": "🛋️", "Salle de bains": "🛁", "Chambre": "🛏️",
+    "Bureau": "💻", "Jardin": "🌳", "Autres": "📦",
+}
+
+def cat_valide(c):
+    """Renvoie la catégorie si elle existe, sinon 'Autres'."""
+    return c if c in CATEGORIES else "Autres"
+
 st.title("🏠 Ménage")
 
 st.markdown("""
@@ -34,8 +46,6 @@ st.markdown("""
 }
 [data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
 
-
-
 /* Bouton ✓ : large, vert, bien visible */
 .stButton button[kind="primary"],
 .stButton button[data-testid="stBaseButton-primary"] {
@@ -57,6 +67,7 @@ st.markdown("""
 .stButton button[kind="primary"]:active,
 .stButton button[data-testid="stBaseButton-primary"]:active {
     background-color: #1b6338 !important;
+}
 
 /* Menu Tifenn / Gaël : compact, texte toujours visible */
 div[data-baseweb="select"] > div {
@@ -88,9 +99,16 @@ div[data-baseweb="select"] svg {
     justify-content: center !important;
 }
 
+/* Catégories plus compactes */
+[data-testid="stExpander"] details summary {
+    padding: 0.4rem 0.6rem !important;
+    font-weight: bold !important;
+}
+[data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+    padding: 0.2rem 0.4rem 0.4rem 0.4rem !important;
+}
 </style>
 """, unsafe_allow_html=True)
-
 
 # Ordre : À faire > Historique > Créer > Gestion
 tab_a_faire, tab_historique, tab_creer, tab_gestion = st.tabs([
@@ -98,7 +116,7 @@ tab_a_faire, tab_historique, tab_creer, tab_gestion = st.tabs([
 ])
 
 # ==========================================
-# ONGLET 1 : À FAIRE (ULTRA COMPACT)
+# ONGLET 1 : À FAIRE (PAR CATÉGORIE)
 # ==========================================
 with tab_a_faire:
     taches = supabase.table("taches").select("*").execute().data
@@ -125,49 +143,63 @@ with tab_a_faire:
         jours = (maintenant - d).days
         retard = jours - t["frequence_jours"]
         liste.append({"id": t["id"], "nom": t["nom"], "freq": t["frequence_jours"],
-                      "prio": t["priorite"], "retard": retard, "date": d, "qui": qui})
+                      "prio": t["priorite"], "retard": retard, "date": d, "qui": qui,
+                      "categorie": cat_valide(t.get("categorie"))})
 
     liste.sort(key=lambda x: (x["retard"], x["prio"]), reverse=True)
 
     if not liste:
         st.info("Aucune tâche. Va dans ➕ Créer.")
     else:
-        for t in liste:
-            if t["retard"] > 0:
-                icone, txt, couleur = "🔴", f"+{t['retard']}j", "#d33"
-            elif t["retard"] == 0:
-                icone, txt, couleur = "🟡", "Auj.", "#c90"
-            else:
-                icone, txt, couleur = "🟢", f"{-t['retard']}j", "gray"
+        for cat in CATEGORIES:
+            taches_cat = [t for t in liste if t["categorie"] == cat]
+            if not taches_cat:
+                continue  # on masque les catégories vides
 
-            # [pastille + nom + jours] [qui] [✓]
-            c1, c2, c3 = st.columns([2.6, 1.7, 1.4], vertical_alignment="center")
+            nb_retard = sum(1 for t in taches_cat if t["retard"] > 0)
+            titre = f"{ICONES_CAT[cat]} {cat} ({len(taches_cat)})"
+            if nb_retard:
+                titre += f" · 🔴 {nb_retard} en retard"
 
-            with c1:
-                st.markdown(
-                    f"<div style='display:flex;align-items:center;"
-                    f"min-height:2.4rem;font-size:0.95em;line-height:1.2;"
-                    f"transform:translateY(-8px)'>"
-                    f"<span>{icone} <b>{t['nom']}</b> "
-                    f"<span style='color:{couleur};font-size:0.85em'>{txt}</span>"
-                    f"</span></div>",
-                    unsafe_allow_html=True
-                )
+            with st.expander(titre, expanded=False):
+                for t in taches_cat:
+                    if t["retard"] > 0:
+                        icone, txt, couleur = "🔴", f"+{t['retard']}j", "#d33"
+                    elif t["retard"] == 0:
+                        icone, txt, couleur = "🟡", "Auj.", "#c90"
+                    else:
+                        icone, txt, couleur = "🟢", f"{-t['retard']}j", "gray"
 
-            with c2:
-                qui = st.selectbox(
-                    "Qui", ["Tifenn", "Gaël"], key=f"q{t['id']}",
-                    label_visibility="collapsed"
-                )
+                    # [pastille + nom + jours] [qui] [✓]
+                    c1, c2, c3 = st.columns([2.6, 1.7, 1.4], vertical_alignment="center")
 
-            with c3:
-                if st.button("✓", key=f"b{t['id']}", type="primary"):
-                    supabase.table("executions").insert({
-                        "tache_id": t["id"],
-                        "personne": qui,
-                        "date_execution": datetime.now().isoformat()
-                    }).execute()
-                    st.rerun()
+                    with c1:
+                        st.markdown(
+                            f"<div style='display:flex;align-items:center;"
+                            f"min-height:2.4rem;font-size:0.95em;line-height:1.2;"
+                            f"transform:translateY(-8px)'>"
+                            f"<span>{icone} <b>{t['nom']}</b> "
+                            f"<span style='color:{couleur};font-size:0.85em'>{txt}</span>"
+                            f"</span></div>",
+                            unsafe_allow_html=True
+                        )
+
+                    with c2:
+                        qui = st.selectbox(
+                            "Qui", ["Tifenn", "Gaël"], key=f"q{t['id']}",
+                            label_visibility="collapsed"
+                        )
+
+                    with c3:
+                        if st.button("✓", key=f"b{t['id']}", type="primary"):
+                            supabase.table("executions").insert({
+                                "tache_id": t["id"],
+                                "personne": qui,
+                                "date_execution": datetime.now().isoformat()
+                            }).execute()
+                            st.rerun()
+
+# ==========================================
 # ONGLET 2 : HISTORIQUE (MODIFIABLE)
 # ==========================================
 with tab_historique:
@@ -197,7 +229,7 @@ with tab_historique:
                         new_time = st.time_input("Heure", value=d.time())
 
                     new_pers = st.selectbox("Qui a fait ?", ["Tifenn", "Gaël"],
-                                          index=0 if e["personne"] == "Tifenn" else 1)
+                                            index=0 if e["personne"] == "Tifenn" else 1)
 
                     if st.form_submit_button("💾 Modifier"):
                         new_dt = datetime.combine(new_date, new_time).isoformat()
@@ -219,6 +251,7 @@ with tab_historique:
 with tab_creer:
     with st.form("new", clear_on_submit=True):
         nom = st.text_input("Nom", placeholder="Aspirateur...")
+        categorie = st.selectbox("Catégorie", CATEGORIES)
         c1, c2 = st.columns(2)
         freq = c1.number_input("Tous les X jours", 1, 365, 7)
         prio = c2.slider("Priorité", 1, 5, 3)
@@ -227,7 +260,8 @@ with tab_creer:
                 supabase.table("taches").insert({
                     "nom": nom.strip(),
                     "frequence_jours": int(freq),
-                    "priorite": int(prio)
+                    "priorite": int(prio),
+                    "categorie": categorie
                 }).execute()
                 st.success("Ajouté !")
                 st.rerun()
@@ -239,18 +273,30 @@ with tab_gestion:
     st.header("⚙️ Gérer les tâches")
     taches = supabase.table("taches").select("*").order("date_creation").execute().data
 
-    for t in taches:
-        with st.expander(f"🔧 {t['nom']}"):
-            with st.form(key=f"m{t['id']}"):
-                n = st.text_input("Nom", value=t["nom"])
-                c1, c2 = st.columns(2)
-                f = c1.number_input("Jours", 1, 365, t["frequence_jours"])
-                p = c2.slider("Prio", 1, 5, t["priorite"])
-                if st.form_submit_button("Enregistrer"):
-                    supabase.table("taches").update({
-                        "nom": n, "frequence_jours": int(f), "priorite": int(p)
-                    }).eq("id", t["id"]).execute()
+    for cat in CATEGORIES:
+        taches_cat = [t for t in taches if cat_valide(t.get("categorie")) == cat]
+        if not taches_cat:
+            continue
+
+        st.subheader(f"{ICONES_CAT[cat]} {cat}")
+        for t in taches_cat:
+            with st.expander(f"🔧 {t['nom']}"):
+                with st.form(key=f"m{t['id']}"):
+                    n = st.text_input("Nom", value=t["nom"])
+                    cat_t = st.selectbox(
+                        "Catégorie", CATEGORIES,
+                        index=CATEGORIES.index(cat_valide(t.get("categorie"))),
+                        key=f"cat{t['id']}"
+                    )
+                    c1, c2 = st.columns(2)
+                    f = c1.number_input("Jours", 1, 365, t["frequence_jours"])
+                    p = c2.slider("Prio", 1, 5, t["priorite"])
+                    if st.form_submit_button("Enregistrer"):
+                        supabase.table("taches").update({
+                            "nom": n, "frequence_jours": int(f), "priorite": int(p),
+                            "categorie": cat_t
+                        }).eq("id", t["id"]).execute()
+                        st.rerun()
+                if st.button("🗑️ Supprimer", key=f"d{t['id']}"):
+                    supabase.table("taches").delete().eq("id", t["id"]).execute()
                     st.rerun()
-            if st.button("🗑️ Supprimer", key=f"d{t['id']}"):
-                supabase.table("taches").delete().eq("id", t["id"]).execute()
-                st.rerun()
