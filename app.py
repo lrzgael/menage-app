@@ -145,8 +145,9 @@ with tab_a_faire:
 
             with c1:
                 st.markdown(
-                    f"<div style='display:flex;align-items:center;padding-bottom:10px"
-                    f"min-height:2.4rem;font-size:0.95em;line-height:1.2'>"
+                    f"<div style='display:flex;align-items:center;"
+                    f"min-height:2.4rem;font-size:0.95em;line-height:1.2;"
+                    f"transform:translateY(-5px)'>"
                     f"<span>{icone} <b>{t['nom']}</b> "
                     f"<span style='color:{couleur};font-size:0.85em'>{txt}</span>"
                     f"</span></div>",
