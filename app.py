@@ -24,6 +24,10 @@ def cat_valide(c):
     """Renvoie la catégorie si elle existe, sinon 'Autres'."""
     return c if c in CATEGORIES else "Autres"
 
+def freq_vers_bdd(f):
+    """0 jour = sans fréquence (NULL dans Supabase)."""
+    return int(f) if f and int(f) > 0 else None
+
 st.title("🏠 Ménage")
 
 st.markdown("""
@@ -141,12 +145,21 @@ with tab_a_faire:
             qui = None
 
         jours = (maintenant - d).days
-        retard = jours - t["frequence_jours"]
-        liste.append({"id": t["id"], "nom": t["nom"], "freq": t["frequence_jours"],
-                      "prio": t["priorite"], "retard": retard, "date": d, "qui": qui,
+        freq = t.get("frequence_jours")
+        retard = (jours - freq) if freq else None   # None = sans fréquence
+        liste.append({"id": t["id"], "nom": t["nom"], "freq": freq,
+                      "prio": t["priorite"], "retard": retard, "jours": jours,
+                      "date": d, "qui": qui,
                       "categorie": cat_valide(t.get("categorie"))})
 
-    liste.sort(key=lambda x: (x["retard"], x["prio"]), reverse=True)
+    # Tri : d'abord les tâches avec fréquence (par retard puis priorité),
+    # puis les tâches sans fréquence tout en bas (par priorité)
+    liste.sort(
+        key=lambda x: (x["retard"] is not None,
+                       x["retard"] if x["retard"] is not None else 0,
+                       x["prio"]),
+        reverse=True
+    )
 
     if not liste:
         st.info("Aucune tâche. Va dans ➕ Créer.")
@@ -156,14 +169,17 @@ with tab_a_faire:
             if not taches_cat:
                 continue  # on masque les catégories vides
 
-            nb_retard = sum(1 for t in taches_cat if t["retard"] > 0)
+            nb_retard = sum(1 for t in taches_cat
+                            if t["retard"] is not None and t["retard"] > 0)
             titre = f"{ICONES_CAT[cat]} {cat} ({len(taches_cat)})"
             if nb_retard:
                 titre += f" · 🔴 {nb_retard} en retard"
 
             with st.expander(titre, expanded=False):
                 for t in taches_cat:
-                    if t["retard"] > 0:
+                    if t["retard"] is None:
+                        icone, txt, couleur = "🔵", "", "#3b82f6"
+                    elif t["retard"] > 0:
                         icone, txt, couleur = "🔴", f"+{t['retard']}j", "#d33"
                     elif t["retard"] == 0:
                         icone, txt, couleur = "🟡", "Auj.", "#c90"
@@ -253,13 +269,13 @@ with tab_creer:
         nom = st.text_input("Nom", placeholder="Aspirateur...")
         categorie = st.selectbox("Catégorie", CATEGORIES)
         c1, c2 = st.columns(2)
-        freq = c1.number_input("Tous les X jours", 1, 365, 7)
+        freq = c1.number_input("Tous les X jours (0 = sans fréquence)", 0, 365, 7)
         prio = c2.slider("Priorité", 1, 5, 3)
         if st.form_submit_button("Ajouter"):
             if nom.strip():
                 supabase.table("taches").insert({
                     "nom": nom.strip(),
-                    "frequence_jours": int(freq),
+                    "frequence_jours": freq_vers_bdd(freq),
                     "priorite": int(prio),
                     "categorie": categorie
                 }).execute()
@@ -280,7 +296,8 @@ with tab_gestion:
 
         st.subheader(f"{ICONES_CAT[cat]} {cat}")
         for t in taches_cat:
-            with st.expander(f"🔧 {t['nom']}"):
+            pastille = "🔵 " if not t.get("frequence_jours") else ""
+            with st.expander(f"🔧 {pastille}{t['nom']}"):
                 with st.form(key=f"m{t['id']}"):
                     n = st.text_input("Nom", value=t["nom"])
                     cat_t = st.selectbox(
@@ -289,12 +306,13 @@ with tab_gestion:
                         key=f"cat{t['id']}"
                     )
                     c1, c2 = st.columns(2)
-                    f = c1.number_input("Jours", 1, 365, t["frequence_jours"])
+                    f = c1.number_input("Jours (0 = sans)", 0, 365,
+                                        t.get("frequence_jours") or 0)
                     p = c2.slider("Prio", 1, 5, t["priorite"])
                     if st.form_submit_button("Enregistrer"):
                         supabase.table("taches").update({
-                            "nom": n, "frequence_jours": int(f), "priorite": int(p),
-                            "categorie": cat_t
+                            "nom": n, "frequence_jours": freq_vers_bdd(f),
+                            "priorite": int(p), "categorie": cat_t
                         }).eq("id", t["id"]).execute()
                         st.rerun()
                 if st.button("🗑️ Supprimer", key=f"d{t['id']}"):
