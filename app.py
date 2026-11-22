@@ -41,7 +41,7 @@ st.markdown("""
 .stButton button[data-testid="stBaseButton-primary"] {
     min-height: 2.4rem !important;
     min-width: 0 !important;
-    width: 100% !important;
+    width: 200% !important;
     padding: 0.2rem !important;
     font-size: 1.3rem !important;
     font-weight: bold !important;
