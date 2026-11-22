@@ -14,9 +14,9 @@ def get_supabase():
 supabase = get_supabase()
 
 # Catégories dans l'ordre d'affichage
-CATEGORIES = ["Salon", "Salle de bains", "Chambre", "Bureau", "Jardin", "Autres"]
+CATEGORIES = ["Salon", "Cuisine" "Salle de bains", "Chambre", "Bureau", "Jardin", "Autres"]
 ICONES_CAT = {
-    "Salon": "🛋️", "Salle de bains": "🛁", "Chambre": "🛏️",
+    "Salon": "🛋️", "Cuisine": "🛋️", "Salle de bains": "🛁", "Chambre": "🛏️",
     "Bureau": "💻", "Jardin": "🌳", "Autres": "📦",
 }
 
