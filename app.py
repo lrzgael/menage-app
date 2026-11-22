@@ -26,39 +26,37 @@ st.markdown("""
 /* Empêcher les colonnes de s'empiler sur mobile */
 [data-testid="stHorizontalBlock"] {
     flex-wrap: nowrap !important;
-    gap: 0.3rem !important;
+    gap: 0.4rem !important;
     align-items: center !important;
 }
 [data-testid="stColumn"], [data-testid="column"] {
     min-width: 0 !important;
 }
-[data-testid="stVerticalBlock"] { gap: 0.3rem !important; }
+[data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
 
-/* Boutons compacts et pleine largeur de leur colonne */
-.stButton button, [data-testid="stPopover"] button {
-    padding: 0.2rem 0.2rem !important;
-    min-height: 0 !important;
+/* Bouton ✓ : plus grand et bien visible */
+.stButton button {
+    min-height: 2.4rem !important;
     min-width: 0 !important;
     width: 100% !important;
+    padding: 0.2rem !important;
+    font-size: 1.3rem !important;
+    font-weight: bold !important;
 }
 
-/* Cacher la flèche du popover (ℹ️) */
-[data-testid="stPopover"] button svg,
-[data-testid="stPopover"] button [data-testid="stIconMaterial"] {
-    display: none !important;
-}
-
-/* Selectbox : cacher la flèche ▼ et centrer l'initiale */
+/* Menu Tifenn / Gaël : compact, texte toujours visible */
 div[data-baseweb="select"] > div {
-    min-height: 0 !important;
-    padding: 0 0.2rem !important;
-    justify-content: center !important;
+    min-height: 2.4rem !important;
+    padding: 0 0.3rem !important;
 }
+div[data-baseweb="select"] div {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    font-size: 0.9rem !important;
+}
+/* Flèche ▼ plus discrète */
 div[data-baseweb="select"] svg {
-    display: none !important;
-}
-div[data-baseweb="select"] input {
-    width: 0 !important;
+    width: 0.8rem !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -112,10 +110,9 @@ with tab_a_faire:
             else:
                 icone, txt, couleur = "🟢", f"{-t['retard']}j", "gray"
 
-            # [pastille + nom + jours] [qui] [✓] [détails]
-            c1, c2, c3, c4 = st.columns([4, 1, 1, 1])
+            # [pastille + nom + jours] [qui] [✓]
+            c1, c2, c3 = st.columns([3, 1.7, 1])
 
-            # Pastille + nom + jours
             with c1:
                 st.markdown(
                     f"<div style='font-size:0.95em;line-height:1.2'>"
@@ -125,15 +122,12 @@ with tab_a_faire:
                     unsafe_allow_html=True
                 )
 
-            # Qui (affiché T / G)
             with c2:
                 qui = st.selectbox(
                     "Qui", ["Tifenn", "Gaël"], key=f"q{t['id']}",
-                    format_func=lambda x: x[0],
                     label_visibility="collapsed"
                 )
 
-            # Bouton fait
             with c3:
                 if st.button("✓", key=f"b{t['id']}"):
                     supabase.table("executions").insert({
@@ -142,18 +136,6 @@ with tab_a_faire:
                         "date_execution": datetime.now().isoformat()
                     }).execute()
                     st.rerun()
-
-            # Détails au bout de la ligne
-            with c4:
-                with st.popover("ℹ️"):
-                    st.write(f"**{t['nom']}**")
-                    st.write(f"Fréquence : tous les {t['freq']} j")
-                    st.write(f"Priorité : {t['prio']}/5")
-                    if t["qui"]:
-                        st.write(f"Dernière fois : {t['date'].strftime('%d/%m')} par {t['qui']}")
-                    else:
-                        st.write(f"Jamais faite (créée le {t['date'].strftime('%d/%m')})")
-# ==========================================
 # ONGLET 2 : HISTORIQUE (MODIFIABLE)
 # ==========================================
 with tab_historique:
