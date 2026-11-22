@@ -36,11 +36,11 @@ st.markdown("""
 
 /* Bouton ✓ : plus grand et bien visible */
 .stButton button {
-    min-height: 2.4rem !important;
+    min-height: 3.5rem !important;
     min-width: 0 !important;
     width: 100% !important;
     padding: 0.2rem !important;
-    font-size: 1.3rem !important;
+    font-size: 2rem !important;
     font-weight: bold !important;
 }
 
