@@ -16,29 +16,53 @@ st.title("🏠 Ménage")
 
 st.markdown("""
 <style>
+/* Laisser de la place sous la barre d'en-tête Streamlit */
+.block-container {
+    padding-top: 3.5rem !important;
+    padding-left: 0.8rem !important;
+    padding-right: 0.8rem !important;
+}
+
 /* Empêcher les colonnes de s'empiler sur mobile */
 [data-testid="stHorizontalBlock"] {
     flex-wrap: nowrap !important;
-    gap: 0.4rem !important;
+    gap: 0.3rem !important;
     align-items: center !important;
 }
 [data-testid="stColumn"], [data-testid="column"] {
     min-width: 0 !important;
 }
-/* Réduire les marges verticales entre les tâches */
-.block-container { padding-top: 1rem !important; }
 [data-testid="stVerticalBlock"] { gap: 0.3rem !important; }
-/* Boutons et selectbox plus compacts */
+
+/* Boutons compacts et pleine largeur de leur colonne */
 .stButton button, [data-testid="stPopover"] button {
-    padding: 0.2rem 0.5rem !important;
+    padding: 0.2rem 0.2rem !important;
     min-height: 0 !important;
+    min-width: 0 !important;
+    width: 100% !important;
 }
+
+/* Cacher la flèche du popover (ℹ️) */
+[data-testid="stPopover"] button svg,
+[data-testid="stPopover"] button [data-testid="stIconMaterial"] {
+    display: none !important;
+}
+
+/* Selectbox : cacher la flèche ▼ et centrer l'initiale */
 div[data-baseweb="select"] > div {
     min-height: 0 !important;
-    padding: 0 !important;
+    padding: 0 0.2rem !important;
+    justify-content: center !important;
+}
+div[data-baseweb="select"] svg {
+    display: none !important;
+}
+div[data-baseweb="select"] input {
+    width: 0 !important;
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 # Ordre : À faire > Historique > Créer > Gestion
 tab_a_faire, tab_historique, tab_creer, tab_gestion = st.tabs([
@@ -89,7 +113,7 @@ with tab_a_faire:
                 icone, txt, couleur = "🟢", f"{-t['retard']}j", "gray"
 
             # [pastille + nom + jours] [qui] [✓] [détails]
-            c1, c2, c3, c4 = st.columns([4.5, 1.4, 0.9, 0.9])
+            c1, c2, c3, c4 = st.columns([4, 1, 1, 1])
 
             # Pastille + nom + jours
             with c1:
