@@ -129,7 +129,7 @@ with tab_a_faire:
 
             with c1:
                 st.markdown(
-                    f"<div style='font-size:0.95em;line-height:1.2'>"
+                    f"<div style='font-size:0.95em;line-height:2.4'>"
                     f"{icone} <b>{t['nom']}</b> "
                     f"<span style='color:{couleur};font-size:0.85em'>{txt}</span>"
                     f"</div>",
