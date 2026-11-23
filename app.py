@@ -241,9 +241,12 @@ with tab_a_faire:
                         and t["retard"] > 0)
         infos = []
         if nb_urg:
-            infos.append(f"🔴 {nb_urg}")
+            infos.append(f"🔴 {nb_urg} à faire")
+            if nb_retard:
+                infos.append(f", {nb_retard} en retard")
         if nb_retard:
-            infos.append(f"{nb_retard} en retard")
+                infos.append(f"🔴 {nb_retard} en retard")
+        
         titre = f"{ICONES_CAT[cat]} {cat}" + (f" — {' · '.join(infos)}" if infos else "")
 
         with st.expander(titre, expanded=nb_urg > 0):
