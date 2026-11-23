@@ -117,18 +117,14 @@ div[data-baseweb="select"] svg {
     background-color: #ef4444 !important;
     color: white !important;
     border: none !important;
-    font-weight: bold;
-    padding: 0 0.5rem !important;
-    min-height: 2rem !important;
 }
 /* Bouton − gris (annuler l'urgence) */
 [class*="st-key-moins_"] button {
     background-color: #9ca3af !important;
     color: white !important;
     border: none !important;
-    padding: 0 0.5rem !important;
-    min-height: 2rem !important;
 }
+
 /* Garder les colonnes sur une seule ligne sur téléphone */
 [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0.3rem !important; }
 [data-testid="stColumn"], [data-testid="column"] { min-width: 0 !important; }
@@ -205,7 +201,7 @@ with tab_a_faire:
                 elif t["retard"] is None:
                     icone, txt = "🔵", ""
                 elif t["derniere"] is None:
-                    icone, txt = "🔴", "jamais"
+                    icone, txt = "🟢", f"{-t['retard']}j"
                 elif t["retard"] > 0:
                     icone, txt = "🔴", f"+{t['retard']}j"
                 elif t["retard"] == 0:
@@ -218,7 +214,7 @@ with tab_a_faire:
                 details += " — Dernière fois : " + (
                     t["derniere"].strftime("%d/%m/%Y") if t["derniere"] else "jamais")
 
-                c0, c1, c2, c3 = st.columns([0.6, 4, 2, 1.2], vertical_alignment="center")
+                c0, c1, c2, c3 = st.columns([1.1, 5, 3, 1.1], vertical_alignment="center")
 
                 # Bouton + / −
                 with c0:
