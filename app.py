@@ -243,7 +243,7 @@ with tab_a_faire:
         if nb_urg:
             infos.append(f"🔴 {nb_urg} à faire")
             if nb_retard:
-                infos.append(f", {nb_retard} en retard")
+                infos.append(f"{nb_retard} en retard")
         else:
             if nb_retard:
                 infos.append(f"🔴 {nb_retard} en retard")
