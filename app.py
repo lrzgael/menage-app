@@ -149,16 +149,16 @@ div[data-baseweb="select"] svg {
     min-height: 2.4rem !important;
     padding: 0 !important;
 }
-/* Le nom prend la place restante, coupé avec "…" si trop long */
+
+/* Le nom prend la place restante et passe à la ligne si besoin */
 [data-testid="stColumn"]:has([data-testid="stMarkdown"]) {
     flex: 1 1 auto !important;
     min-width: 0 !important;
-    overflow: hidden;
 }
 [data-testid="stColumn"] [data-testid="stMarkdown"] p {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
     margin: 0;
 }
 
