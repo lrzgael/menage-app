@@ -126,7 +126,7 @@ div[data-baseweb="select"] svg {
 }
 
 /* --- Ligne de tâche sur mobile --- */
-/* Colonnes des boutons ＋ / － / ✅ : largeur fixe * - TAILLE COLONNE BOUTONS/
+/* Colonnes des boutons ＋ / － / ✅ : largeur fixe * - TAILLE COLONNE BOUTONS*/
 [data-testid="stColumn"]:has([class*="st-key-plus_"]),
 [data-testid="stColumn"]:has([class*="st-key-moins_"]),
 [data-testid="stColumn"]:has([class*="st-key-fait_"]) {
