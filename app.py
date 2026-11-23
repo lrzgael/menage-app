@@ -267,7 +267,7 @@ with tab_a_faire:
                 details += " — Dernière fois : " + (
                     t["derniere"].strftime("%d/%m/%Y") if t["derniere"] else "jamais")
 
-                c0, c1, c2, c3 = st.columns([1.1, 5, 3, 1.1], vertical_alignment="center")
+                c1, c2, c3, c0 = st.columns([5, 2, 1, 1], vertical_alignment="center")
 
                 # Bouton + / −
                 with c0:
