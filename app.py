@@ -221,8 +221,11 @@ with tab_a_faire:
 with tab_historique:
     st.header("📜 Historique")
 
-    # Récupérer avec jointure
-    histo = supabase.table("executions").select("*, taches(nom)").order("date_execution", desc=True).execute().data
+    # Récupérer avec jointure (nom + catégorie de la tâche)
+    histo = supabase.table("executions") \
+        .select("*, taches(nom, categorie)") \
+        .order("date_execution", desc=True) \
+        .execute().data
 
     if not histo:
         st.info("Vide pour l'instant.")
@@ -230,25 +233,40 @@ with tab_historique:
         filtre = st.radio("Filtrer:", ["Tous", "Tifenn", "Gaël"], horizontal=True)
         if filtre != "Tous":
             histo = [e for e in histo if e["personne"] == filtre]
+        filtre_cat = st.selectbox("Catégorie", ["Toutes"] + CATEGORIES)
+        if filtre_cat != "Toutes":
+            histo = [e for e in histo
+                     if cat_valide((e.get("taches") or {}).get("categorie")) == filtre_cat]
 
         for e in histo:
             d = datetime.fromisoformat(e["date_execution"].replace("Z", "+00:00"))
-            nom = e["taches"]["nom"] if e.get("taches") else "❓"
-            label = f"{d.strftime('%d/%m/%Y %H:%M')} — {nom} — {e['personne']}"
+
+            if e.get("taches"):
+                nom = e["taches"]["nom"]
+                cat = cat_valide(e["taches"].get("categorie"))
+            else:
+                nom, cat = "❓", "Autres"
+
+            label = (f"{d.strftime('%d/%m/%Y')} — {ICONES_CAT[cat]} {cat} · "
+                     f"{nom} — {e['personne']}")
 
             with st.expander(label):
                 with st.form(key=f"edit_{e['id']}"):
                     c1, c2 = st.columns(2)
                     with c1:
-                        new_date = st.date_input("Date", value=d.date())
+                        new_date = st.date_input("Date", value=d.date(),
+                                                 format="DD/MM/YYYY",
+                                                 key=f"date_{e['id']}")
                     with c2:
-                        new_time = st.time_input("Heure", value=d.time())
-
-                    new_pers = st.selectbox("Qui a fait ?", ["Tifenn", "Gaël"],
-                                            index=0 if e["personne"] == "Tifenn" else 1)
+                        new_pers = st.selectbox(
+                            "Qui a fait ?", ["Tifenn", "Gaël"],
+                            index=0 if e["personne"] == "Tifenn" else 1,
+                            key=f"pers_{e['id']}"
+                        )
 
                     if st.form_submit_button("💾 Modifier"):
-                        new_dt = datetime.combine(new_date, new_time).isoformat()
+                        # On garde l'heure d'origine (invisible) pour conserver l'ordre du tri
+                        new_dt = datetime.combine(new_date, d.time()).isoformat()
                         supabase.table("executions").update({
                             "date_execution": new_dt,
                             "personne": new_pers
