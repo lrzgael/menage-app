@@ -111,6 +111,27 @@ div[data-baseweb="select"] svg {
 [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
     padding: 0.2rem 0.4rem 0.4rem 0.4rem !important;
 }
+
+/* Bouton + rouge (passer en urgent) */
+[class*="st-key-plus_"] button {
+    background-color: #ef4444 !important;
+    color: white !important;
+    border: none !important;
+    font-weight: bold;
+    padding: 0 0.5rem !important;
+    min-height: 2rem !important;
+}
+/* Bouton − gris (annuler l'urgence) */
+[class*="st-key-moins_"] button {
+    background-color: #9ca3af !important;
+    color: white !important;
+    border: none !important;
+    padding: 0 0.5rem !important;
+    min-height: 2rem !important;
+}
+/* Garder les colonnes sur une seule ligne sur téléphone */
+[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0.3rem !important; }
+[data-testid="stColumn"], [data-testid="column"] { min-width: 0 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -120,100 +141,116 @@ tab_a_faire, tab_historique, tab_creer, tab_gestion = st.tabs([
 ])
 
 # ==========================================
-# ONGLET 1 : À FAIRE (PAR CATÉGORIE)
+# ONGLET 1 : À FAIRE
 # ==========================================
-with tab_a_faire:
+with tab_afaire:
     taches = supabase.table("taches").select("*").execute().data
-    executions = supabase.table("executions").select("*").order("date_execution", desc=True).execute().data
+    execs = supabase.table("executions") \
+        .select("tache_id, date_execution") \
+        .order("date_execution", desc=True) \
+        .execute().data
 
-    # Dernière exécution par tâche
-    derniere_exec = {}
-    for e in executions:
-        if e["tache_id"] not in derniere_exec:
-            derniere_exec[e["tache_id"]] = e
+    # Dernière exécution de chaque tâche
+    derniere = {}
+    for ex in execs:
+        if ex["tache_id"] not in derniere:
+            derniere[ex["tache_id"]] = datetime.fromisoformat(
+                ex["date_execution"].replace("Z", "+00:00")).date()
 
-    # Calcul tri
-    liste = []
-    maintenant = datetime.now()
+    # Calcul du retard
     for t in taches:
-        e = derniere_exec.get(t["id"])
-        if e:
-            d = datetime.fromisoformat(e["date_execution"].replace("Z", "+00:00")).replace(tzinfo=None)
-            qui = e["personne"]
-        else:
-            d = datetime.fromisoformat(t["date_creation"].replace("Z", "+00:00")).replace(tzinfo=None)
-            qui = None
-
-        jours = (maintenant - d).days
+        t["urgent"] = bool(t.get("urgent"))
+        d = derniere.get(t["id"])
+        t["derniere"] = d
+        t["jours"] = (date.today() - d).days if d else None
         freq = t.get("frequence_jours")
-        retard = (jours - freq) if freq else None   # None = sans fréquence
-        liste.append({"id": t["id"], "nom": t["nom"], "freq": freq,
-                      "prio": t["priorite"], "retard": retard, "jours": jours,
-                      "date": d, "qui": qui,
-                      "categorie": cat_valide(t.get("categorie"))})
+        if not freq:
+            t["retard"] = None                  # sans fréquence
+        elif d is None:
+            t["retard"] = 9999                  # jamais faite = très en retard
+        else:
+            t["retard"] = t["jours"] - freq
 
-    # Tri : d'abord les tâches avec fréquence (par retard puis priorité),
-    # puis les tâches sans fréquence tout en bas (par priorité)
-    liste.sort(
-        key=lambda x: (x["retard"] is not None,
-                       x["retard"] if x["retard"] is not None else 0,
-                       x["prio"]),
-        reverse=True
-    )
+    def cle_tri(t):
+        if t["urgent"]:
+            return (0, 0, -t["priorite"])                  # 1. urgentes
+        if t["retard"] is not None:
+            return (1, -t["retard"], -t["priorite"])       # 2. avec fréquence
+        return (2, 0, -t["priorite"])                      # 3. sans fréquence
 
-    if not liste:
-        st.info("Aucune tâche. Va dans ➕ Créer.")
-    else:
-        for cat in CATEGORIES:
-            taches_cat = [t for t in liste if t["categorie"] == cat]
-            if not taches_cat:
-                continue  # on masque les catégories vides
+    if not taches:
+        st.info("Aucune tâche. Crée-en une dans l'onglet Créer.")
 
-            nb_retard = sum(1 for t in taches_cat
-                            if t["retard"] is not None and t["retard"] > 0)
-            titre = f"{ICONES_CAT[cat]} {cat} ({len(taches_cat)})"
-            if nb_retard:
-                titre += f" · 🔴 {nb_retard} en retard"
+    for cat in CATEGORIES:
+        liste = sorted([t for t in taches if cat_valide(t.get("categorie")) == cat],
+                       key=cle_tri)
+        if not liste:
+            continue
 
-            with st.expander(titre, expanded=False):
-                for t in taches_cat:
-                    if t["retard"] is None:
-                        icone, txt, couleur = "🔵", "", "#3b82f6"
-                    elif t["retard"] > 0:
-                        icone, txt, couleur = "🔴", f"+{t['retard']}j", "#d33"
-                    elif t["retard"] == 0:
-                        icone, txt, couleur = "🟡", "Auj.", "#c90"
-                    else:
-                        icone, txt, couleur = "🟢", f"{-t['retard']}j", "gray"
+        nb_urg = sum(t["urgent"] for t in liste)
+        nb_retard = sum(1 for t in liste
+                        if not t["urgent"] and t["retard"] is not None and t["retard"] > 0)
+        infos = []
+        if nb_urg:
+            infos.append(f"🔴 {nb_urg}")
+        if nb_retard:
+            infos.append(f"{nb_retard} en retard")
+        titre = f"{ICONES_CAT[cat]} {cat}" + (f" — {' · '.join(infos)}" if infos else "")
 
-                    # [pastille + nom + jours] [qui] [✓]
-                    c1, c2, c3 = st.columns([2.6, 1.7, 1.4], vertical_alignment="center")
+        with st.expander(titre, expanded=nb_urg > 0):
+            for t in liste:
+                # Pastille + texte
+                if t["urgent"]:
+                    icone, txt = "🔴", "à faire !"
+                elif t["retard"] is None:
+                    icone, txt = "🔵", ""
+                elif t["derniere"] is None:
+                    icone, txt = "🔴", "jamais"
+                elif t["retard"] > 0:
+                    icone, txt = "🔴", f"+{t['retard']}j"
+                elif t["retard"] == 0:
+                    icone, txt = "🟡", "auj."
+                else:
+                    icone, txt = "🟢", f"{-t['retard']}j"
 
-                    with c1:
-                        st.markdown(
-                            f"<div style='display:flex;align-items:center;"
-                            f"min-height:2.4rem;font-size:0.95em;line-height:1.2;"
-                            f"transform:translateY(-8px)'>"
-                            f"<span>{icone} <b>{t['nom']}</b> "
-                            f"<span style='color:{couleur};font-size:0.85em'>{txt}</span>"
-                            f"</span></div>",
-                            unsafe_allow_html=True
-                        )
+                details = (f"Fréquence : {t['frequence_jours']} j" if t.get("frequence_jours")
+                           else "Sans fréquence")
+                details += " — Dernière fois : " + (
+                    t["derniere"].strftime("%d/%m/%Y") if t["derniere"] else "jamais")
 
-                    with c2:
-                        qui = st.selectbox(
-                            "Qui", ["Tifenn", "Gaël"], key=f"q{t['id']}",
-                            label_visibility="collapsed"
-                        )
+                c0, c1, c2, c3 = st.columns([0.6, 4, 2, 1.2], vertical_alignment="center")
 
-                    with c3:
-                        if st.button("✓", key=f"b{t['id']}", type="primary"):
-                            supabase.table("executions").insert({
-                                "tache_id": t["id"],
-                                "personne": qui,
-                                "date_execution": datetime.now().isoformat()
-                            }).execute()
+                # Bouton + / −
+                with c0:
+                    if not t["urgent"]:
+                        if st.button("＋", key=f"plus_{t['id']}", help="Passer en à faire"):
+                            supabase.table("taches").update({"urgent": True}) \
+                                .eq("id", t["id"]).execute()
                             st.rerun()
+                    else:
+                        if st.button("－", key=f"moins_{t['id']}", help="Annuler"):
+                            supabase.table("taches").update({"urgent": False}) \
+                                .eq("id", t["id"]).execute()
+                            st.rerun()
+
+                with c1:
+                    st.markdown(f"{icone} **{t['nom']}** <small>{txt}</small>",
+                                unsafe_allow_html=True, help=details)
+                with c2:
+                    qui = st.selectbox("Qui", ["Tifenn", "Gaël"],
+                                       key=f"qui_{t['id']}",
+                                       label_visibility="collapsed")
+                with c3:
+                    if st.button("✅", key=f"fait_{t['id']}", help="C'est fait"):
+                        supabase.table("executions").insert({
+                            "tache_id": t["id"],
+                            "personne": qui,
+                            "date_execution": datetime.now().isoformat()
+                        }).execute()
+                        if t["urgent"]:
+                            supabase.table("taches").update({"urgent": False}) \
+                                .eq("id", t["id"]).execute()
+                        st.rerun()
 
 # ==========================================
 # ONGLET 2 : HISTORIQUE (MODIFIABLE)
