@@ -126,13 +126,13 @@ div[data-baseweb="select"] svg {
 }
 
 /* --- Ligne de tâche sur mobile --- */
-/* Colonnes des boutons ＋ / － / ✅ : largeur fixe */
+/* Colonnes des boutons ＋ / － / ✅ : largeur fixe * - TAILLE COLONNE BOUTONS/
 [data-testid="stColumn"]:has([class*="st-key-plus_"]),
 [data-testid="stColumn"]:has([class*="st-key-moins_"]),
 [data-testid="stColumn"]:has([class*="st-key-fait_"]) {
-    flex: 0 0 2.6rem !important;
-    width: 2.6rem !important;
-    min-width: 2.6rem !important;
+    flex: 0 0 2.4rem !important;
+    width: 2.4rem !important;
+    min-width: 2.4rem !important;
 }
 /* Colonne du menu "Qui" : largeur fixe */
 [data-testid="stColumn"]:has([class*="st-key-qui_"]) {
@@ -141,13 +141,20 @@ div[data-baseweb="select"] svg {
     min-width: 5.8rem !important;
 }
 /* Les boutons remplissent leur colonne */
-[class*="st-key-plus_"] button,
+[class*="st-key-plus_"] button, 
 [class*="st-key-moins_"] button,
 [class*="st-key-fait_"] button {
-    width: 2.6rem !important;
-    min-width: 2.6rem !important;
-    min-height: 2.4rem !important;
+    width: 2.4rem !important;  /* ← largeur (même valeur que la colonne) */
+    min-width: 2.4rem !important;  /* ← largeur (même valeur que la colonne) */
+    min-height: 2.2rem !important;  /* ← hauteur  */
     padding: 0 !important;
+}
+
+/* TAILLE SYMBOLE BOUTONS*/
+[class*="st-key-plus_"] button p,
+[class*="st-key-moins_"] button p,
+[class*="st-key-fait_"] button p {
+    font-size: 1.3rem !important;     /* ← taille de l'icône */
 }
 
 /* Le nom prend la place restante et passe à la ligne si besoin */
