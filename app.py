@@ -179,7 +179,6 @@ with tab_a_faire:
         retard = t["retard"] if groupe == 1 else 0
         return (groupe, -retard, -t["priorite"])
 
-    taches_cat.sort(key=cle_tri)
 
     if not taches:
         st.info("Aucune tâche. Crée-en une dans l'onglet Créer.")
