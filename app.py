@@ -125,6 +125,43 @@ div[data-baseweb="select"] svg {
     border: none !important;
 }
 
+/* --- Ligne de tâche sur mobile --- */
+/* Colonnes des boutons ＋ / － / ✅ : largeur fixe */
+[data-testid="stColumn"]:has([class*="st-key-plus_"]),
+[data-testid="stColumn"]:has([class*="st-key-moins_"]),
+[data-testid="stColumn"]:has([class*="st-key-fait_"]) {
+    flex: 0 0 2.6rem !important;
+    width: 2.6rem !important;
+    min-width: 2.6rem !important;
+}
+/* Colonne du menu "Qui" : largeur fixe */
+[data-testid="stColumn"]:has([class*="st-key-qui_"]) {
+    flex: 0 0 5.8rem !important;
+    width: 5.8rem !important;
+    min-width: 5.8rem !important;
+}
+/* Les boutons remplissent leur colonne */
+[class*="st-key-plus_"] button,
+[class*="st-key-moins_"] button,
+[class*="st-key-fait_"] button {
+    width: 2.6rem !important;
+    min-width: 2.6rem !important;
+    min-height: 2.4rem !important;
+    padding: 0 !important;
+}
+/* Le nom prend la place restante, coupé avec "…" si trop long */
+[data-testid="stColumn"]:has([data-testid="stMarkdown"]) {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: hidden;
+}
+[data-testid="stColumn"] [data-testid="stMarkdown"] p {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+}
+
 /* Garder les colonnes sur une seule ligne sur téléphone */
 [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0.3rem !important; }
 [data-testid="stColumn"], [data-testid="column"] { min-width: 0 !important; }
@@ -191,7 +228,10 @@ with tab_a_faire:
 
         nb_urg = sum(t["urgent"] for t in liste)
         nb_retard = sum(1 for t in liste
-                        if not t["urgent"] and t["retard"] is not None and t["retard"] > 0)
+                        if not t["urgent"]
+                        and t["derniere"] is not None      # exclut les jamais faites
+                        and t["retard"] is not None
+                        and t["retard"] > 0)
         infos = []
         if nb_urg:
             infos.append(f"🔴 {nb_urg}")
