@@ -169,10 +169,17 @@ with tab_a_faire:
 
     def cle_tri(t):
         if t["urgent"]:
-            return (0, 0, -t["priorite"])                  # 1. urgentes
-        if t["retard"] is not None:
-            return (1, -t["retard"], -t["priorite"])       # 2. avec fréquence
-        return (2, 0, -t["priorite"])                      # 3. sans fréquence
+            groupe = 0        # 🔴 urgentes
+        elif t["retard"] is None:
+            groupe = 3        # 🔵 sans fréquence
+        elif t["derniere"] is None:
+            groupe = 2        # 🟢 jamais faites
+        else:
+            groupe = 1        # retards / aujourd'hui / pas encore dues
+        retard = t["retard"] if groupe == 1 else 0
+        return (groupe, -retard, -t["priorite"])
+
+    taches_cat.sort(key=cle_tri)
 
     if not taches:
         st.info("Aucune tâche. Crée-en une dans l'onglet Créer.")
@@ -201,7 +208,7 @@ with tab_a_faire:
                 elif t["retard"] is None:
                     icone, txt = "🔵", ""
                 elif t["derniere"] is None:
-                    icone, txt = "🟢", f"{-t['retard']}j"
+                    icone, txt = "🟢", f"jamais"
                 elif t["retard"] > 0:
                     icone, txt = "🔴", f"+{t['retard']}j"
                 elif t["retard"] == 0:
