@@ -244,7 +244,8 @@ with tab_a_faire:
             infos.append(f"🔴 {nb_urg} à faire")
             if nb_retard:
                 infos.append(f", {nb_retard} en retard")
-        if nb_retard:
+        else:
+            if nb_retard:
                 infos.append(f"🔴 {nb_retard} en retard")
         
         titre = f"{ICONES_CAT[cat]} {cat}" + (f" — {' · '.join(infos)}" if infos else "")
