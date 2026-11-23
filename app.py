@@ -143,7 +143,7 @@ tab_a_faire, tab_historique, tab_creer, tab_gestion = st.tabs([
 # ==========================================
 # ONGLET 1 : À FAIRE
 # ==========================================
-with tab_afaire:
+with tab_a_faire:
     taches = supabase.table("taches").select("*").execute().data
     execs = supabase.table("executions") \
         .select("tache_id, date_execution") \
