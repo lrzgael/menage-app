@@ -130,9 +130,9 @@ div[data-baseweb="select"] svg {
 [data-testid="stColumn"]:has([class*="st-key-plus_"]),
 [data-testid="stColumn"]:has([class*="st-key-moins_"]),
 [data-testid="stColumn"]:has([class*="st-key-fait_"]) {
-    flex: 0 0 2.4rem !important;
-    width: 2.4rem !important;
-    min-width: 2.4rem !important;
+    flex: 0 0 2.0rem !important;
+    width: 2.0rem !important;
+    min-width: 2.0rem !important;
 }
 /* Colonne du menu "Qui" : largeur fixe */
 [data-testid="stColumn"]:has([class*="st-key-qui_"]) {
@@ -144,9 +144,9 @@ div[data-baseweb="select"] svg {
 [class*="st-key-plus_"] button, 
 [class*="st-key-moins_"] button,
 [class*="st-key-fait_"] button {
-    width: 2.4rem !important;  /* ← largeur (même valeur que la colonne) */
-    min-width: 2.4rem !important;  /* ← largeur (même valeur que la colonne) */
-    min-height: 2.2rem !important;  /* ← hauteur  */
+    width: 2.0rem !important;  /* ← largeur (même valeur que la colonne) */
+    min-width: 2.0rem !important;  /* ← largeur (même valeur que la colonne) */
+    min-height: 2.0rem !important;  /* ← hauteur  */
     padding: 0 !important;
 }
 
